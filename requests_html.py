@@ -55,7 +55,7 @@ _NextSymbol = List[str]
 # Sanity checking.
 try:
     assert sys.version_info.major == 3
-    assert sys.version_info.minor > 5
+    assert sys.version_info.minor >= 5
 except AssertionError:
     raise RuntimeError('Requests-HTML requires Python 3.6+!')
 
@@ -68,12 +68,10 @@ class MaxRetries(Exception):
 
 class BaseParser:
     """A basic HTML/Element Parser, for Humans.
-
     :param element: The element from which to base the parsing upon.
     :param default_encoding: Which encoding to default to.
     :param html: HTML from which to base the parsing upon (optional).
     :param url: The URL from which the HTML originated, used for ``absolute_links``.
-
     """
 
     def __init__(self, *, element, default_encoding: _DefaultEncoding = None, html: _HTML = None, url: _URL) -> None:
@@ -96,6 +94,11 @@ class BaseParser:
         else:
             return etree.tostring(self.element, encoding='unicode').strip().encode(self.encoding)
 
+    @raw_html.setter
+    def raw_html(self, html: bytes) -> None:
+        """Property setter for self.html."""
+        self._html = html
+
     @property
     def html(self) -> _BaseHTML:
         """Unicode representation of the HTML content
@@ -109,11 +112,6 @@ class BaseParser:
     @html.setter
     def html(self, html: str) -> None:
         self._html = html.encode(self.encoding)
-
-    @raw_html.setter
-    def raw_html(self, html: bytes) -> None:
-        """Property setter for self.html."""
-        self._html = html
 
     @property
     def encoding(self) -> _Encoding:
@@ -180,24 +178,19 @@ class BaseParser:
     def find(self, selector: str = "*", *, containing: _Containing = None, clean: bool = False, first: bool = False, _encoding: str = None) -> _Find:
         """Given a CSS Selector, returns a list of
         :class:`Element <Element>` objects or a single one.
-
         :param selector: CSS Selector to use.
         :param clean: Whether or not to sanitize the found HTML of ``<script>`` and ``<style>`` tags.
         :param containing: If specified, only return elements that contain the provided text.
         :param first: Whether or not to return just the first result.
         :param _encoding: The encoding format.
-
         Example CSS Selectors:
-
         - ``a``
         - ``a.someClass``
         - ``a#someID``
         - ``a[target=_blank]``
-
         See W3School's `CSS Selectors Reference
         <https://www.w3schools.com/cssref/css_selectors.asp>`_
         for more details.
-
         If ``first`` is ``True``, only returns the first
         :class:`Element <Element>` found.
         """
@@ -236,19 +229,15 @@ class BaseParser:
     def xpath(self, selector: str, *, clean: bool = False, first: bool = False, _encoding: str = None) -> _XPath:
         """Given an XPath selector, returns a list of
         :class:`Element <Element>` objects or a single one.
-
         :param selector: XPath Selector to use.
         :param clean: Whether or not to sanitize the found HTML of ``<script>`` and ``<style>`` tags.
         :param first: Whether or not to return just the first result.
         :param _encoding: The encoding format.
-
         If a sub-selector is specified (e.g. ``//a/@href``), a simple
         list of results is returned.
-
         See W3School's `XPath Examples
         <https://www.w3schools.com/xml/xpath_examples.asp>`_
         for more details.
-
         If ``first`` is ``True``, only returns the first
         :class:`Element <Element>` found.
         """
@@ -273,7 +262,6 @@ class BaseParser:
 
     def search(self, template: str) -> Result:
         """Search the :class:`Element <Element>` for the given Parse template.
-
         :param template: The Parse template to use.
         """
 
@@ -282,7 +270,6 @@ class BaseParser:
     def search_all(self, template: str) -> _Result:
         """Search the :class:`Element <Element>` (multiple times) for the given parse
         template.
-
         :param template: The Parse template to use.
         """
         return [r for r in findall(template, self.html)]
@@ -364,7 +351,6 @@ class BaseParser:
 
 class Element(BaseParser):
     """An element of HTML.
-
     :param element: The element from which to base the parsing upon.
     :param url: The URL from which the HTML originated, used for ``absolute_links``.
     :param default_encoding: Which encoding to default to.
@@ -382,7 +368,7 @@ class Element(BaseParser):
 
     def __repr__(self) -> str:
         attrs = ['{}={}'.format(attr, repr(self.attrs[attr])) for attr in self.attrs]
-        return "<Element {} {}>".format(repr(self.element.tag), ' '.join(attrs))
+        return '<Element {} {}>'.format(repr(self.element.tag), ' '.join(attrs))
 
     @property
     def attrs(self) -> _Attrs:
@@ -402,7 +388,6 @@ class Element(BaseParser):
 
 class HTML(BaseParser):
     """An HTML document, ready for parsing.
-
     :param url: The URL from which the HTML originated, used for ``absolute_links``.
     :param html: HTML from which to base the parsing upon (optional).
     :param default_encoding: Which encoding to default to.
@@ -416,23 +401,22 @@ class HTML(BaseParser):
 
         super(HTML, self).__init__(
             # Convert unicode HTML to bytes.
-            element=PyQuery(html)('html') or PyQuery(f'<html>{html}</html>')('html'),
-            html=html,
-            url=url,
-            default_encoding=default_encoding
+            element = PyQuery(html)('html') or PyQuery('<html>{}</html>'.format(html))('html'),
+            html = html,
+            url = url,
+            default_encoding = default_encoding
         )
         self.session = session or HTMLSession()
         self.page = None
         self.next_symbol = DEFAULT_NEXT_SYMBOL
 
     def __repr__(self) -> str:
-        return f"<HTML url={self.url!r}>"
+        return '<HTML url={}>'.format(self.url)
 
     def _next(self, fetch: bool = False, next_symbol: _NextSymbol = DEFAULT_NEXT_SYMBOL) -> _Next:
         """Attempts to find the next page, if there is one. If ``fetch``
         is ``True`` (default), returns :class:`HTML <HTML>` object of
         next page. If ``fetch`` is ``False``, simply returns the next URL.
-
         """
 
         def get_next():
@@ -486,10 +470,9 @@ class HTML(BaseParser):
     def add_next_symbol(self, next_symbol):
         self.next_symbol.append(next_symbol)
 
-    def render(self, retries: int = 8, script: str = None, wait: float = 0.2, scrolldown=False, sleep: int = 0, reload: bool = True, timeout: Union[float, int] = 8.0, keep_page: bool = False):
+    def render(self, retries: int = 8, script: str = None, wait: float = 0.2, scrolldown=False, sleep: int = 0, reload: bool = True, timeout: Union[float, int] = 8.0, keep_page: bool = False, screenshot: str = None):
         """Reloads the response in Chromium, and replaces HTML content
         with an updated version, with JavaScript executed.
-
         :param retries: The number of times to retry loading the page in Chromium.
         :param script: JavaScript to execute upon page load (optional).
         :param wait: The number of seconds to wait before loading the page, preventing timeouts (optional).
@@ -497,19 +480,14 @@ class HTML(BaseParser):
         :param sleep: Integer, if provided, of how many long to sleep after initial render.
         :param reload: If ``False``, content will not be loaded from the browser, but will be provided from memory.
         :param keep_page: If ``True`` will allow you to interact with the browser page through ``r.html.page``.
-
         If ``scrolldown`` is specified, the page will scrolldown the specified
         number of times, after sleeping the specified amount of time
         (e.g. ``scrolldown=10, sleep=1``).
-
         If just ``sleep`` is provided, the rendering will wait *n* seconds, before
         returning.
-
         If ``script`` is specified, it will execute the provided JavaScript at
         runtime. Example:
-
         .. code-block:: python
-
             script = \"\"\"
                 () => {
                     return {
@@ -519,21 +497,16 @@ class HTML(BaseParser):
                     }
                 }
             \"\"\"
-
         Returns the return value of the executed  ``script``, if any is provided:
-
         .. code-block:: python
-
             >>> r.html.render(script=script)
             {'width': 800, 'height': 600, 'deviceScaleFactor': 1}
-
         Warning: If you use keep_page, you're responsable for closing each page, since
         opening to many at scale may crach the browser.
-
         Warning: the first time you run this method, it will download
         Chromium into your home directory (``~/.pyppeteer``).
         """
-        async def _async_render(*, url: str, script: str = None, scrolldown, sleep: int, wait: float, reload, content: Optional[str], timeout: Union[float, int], keep_page: bool):
+        async def _async_render(*, url: str, script: str = None, scrolldown, sleep: int, wait: float, reload, content: Optional[str], timeout: Union[float, int], keep_page: bool, screenshot: str):
             try:
                 page = await self.session.browser.newPage()
 
@@ -544,7 +517,7 @@ class HTML(BaseParser):
                 if reload:
                     await page.goto(url, options={'timeout': int(timeout * 1000)})
                 else:
-                    await page.goto(f'data:text/html,{self.html}', options={'timeout': int(timeout * 1000)})
+                    await page.goto('data:text/html,{}'.format(self.html), options={'timeout': int(timeout * 1000)})
 
                 result = None
                 if script:
@@ -562,6 +535,10 @@ class HTML(BaseParser):
 
                 # Return the content of the page, JavaScript evaluated.
                 content = await page.content()
+
+                if screenshot:
+                    await page.screenshot({'path': screenshot})
+
                 if not keep_page:
                     await page.close()
                     page = None
@@ -579,8 +556,18 @@ class HTML(BaseParser):
         for i in range(retries):
             if not content:
                 try:
-
-                    content, result, page = self.session.loop.run_until_complete(_async_render(url=self.url, script=script, sleep=sleep, wait=wait, content=self.html, reload=reload, scrolldown=scrolldown, timeout=timeout, keep_page=keep_page))
+                    content, result, page = self.session.loop.run_until_complete(_async_render(
+                        url=self.url, 
+                        script=script, 
+                        sleep=sleep, 
+                        wait=wait, 
+                        content=self.html, 
+                        reload=reload, 
+                        scrolldown=scrolldown, 
+                        timeout=timeout, 
+                        keep_page=keep_page, 
+                        screenshot=screenshot
+                    ))
                 except TypeError:
                     pass
             else:
@@ -604,6 +591,9 @@ class HTMLResponse(requests.Response):
         super(HTMLResponse, self).__init__()
         self._html = None  # type: HTML
         self.session = session
+
+    def __repr__(self) -> str:
+        return '<HTMLResponse {}>'.format(self.status_code)
 
     @property
     def html(self) -> HTML:
@@ -655,13 +645,12 @@ class HTMLSession(requests.Session):
         self.hooks = {'response': self._handle_response}
 
     @staticmethod
-    def _handle_response(response, **kwargs) -> HTMLResponse:
+    def _handle_response(response, **kwargs) -> requests.Response:
         """Requests HTTP Response handler. Attaches .html property to
         class:`requests.Response <requests.Response>` objects.
         """
         if not response.encoding:
             response.encoding = DEFAULT_ENCODING
-
         return response
 
     def request(self, *args, **kwargs) -> HTMLResponse:
@@ -693,7 +682,6 @@ class AsyncHTMLSession(requests.Session):
     def __init__(self, loop=None, workers=None,
                  mock_browser: bool = True, *args, **kwargs):
         """ Set or create an event loop and a thread pool.
-
             :param loop: Asyncio lopp to use.
             :param workers: Amount of threads to use for executing async calls.
                 If not pass it will default to the number of processors on the
